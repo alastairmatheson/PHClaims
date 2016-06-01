@@ -66,7 +66,8 @@ eligall <- merge(elig2014, elig2015, by.x = "ID2014", by.y = "ID2015")
 
 ##### Bring in all the relevant claims data ####
 
-# Baseline hospitalizations and ED visits
+# Baseline (2014) hospitalizations and ED visits (any cause)
+ptm02 <- proc.time() # Times how long this query takes (~90 secs)
 hospED <-
   sqlQuery(
     db.claims,
@@ -76,241 +77,117 @@ hospED <-
     FROM dbo.vClaims
     GROUP BY MEDICAID_RECIPIENT_ID"
   )
+proc.time() - ptm02
 
 
-# Baseline claims for patients with asthma
-ptm02 <- proc.time() # Times how long this query takes (~65 secs)
+# 2014 and 2015 claims for patients with asthma
+ptm03 <- proc.time() # Times how long this query takes (~90 secs)
 asthma <-
   sqlQuery(
     db.claims,
     "SELECT MEDICAID_RECIPIENT_ID AS 'ID2014', *
     FROM dbo.vClaims
-    WHERE CAL_YEAR = 2014
+    WHERE CAL_YEAR IN (2014, 2015)
     AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%'
     OR DIAGNOSIS_CODE_2 LIKE '493%' OR DIAGNOSIS_CODE_2 LIKE 'J45%'
     OR DIAGNOSIS_CODE_3 LIKE '493%' OR DIAGNOSIS_CODE_3 LIKE 'J45%'
     OR DIAGNOSIS_CODE_4 LIKE '493%' OR DIAGNOSIS_CODE_4 LIKE 'J45%'
     OR DIAGNOSIS_CODE_5 LIKE '493%' OR DIAGNOSIS_CODE_5 LIKE 'J45%')"
   )
-proc.time() - ptm02
+proc.time() - ptm03
 
 
 ##### Merge all eligible children with asthma claims
 asthmachild <- merge(eligall, asthma, by = "ID2014")
 
-# Count up number of predictors for each child
+# Count up number of baseline (2014) predictors for each child
 asthmarisk <- asthmachild %>%
   group_by(ID2014) %>%
-  mutate(hospcount = summarise(ifelse(CAL_YEAR=2014 & CLM_TYPE_CID=31,1,0)))
-           
-           
-           
-           
-           
-           ifelse(substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "493" | 
-                              substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "J45" |
-                              substr(DIAGNOSIS_CODE_2, 1, 3) == "493" |
-                              substr(DIAGNOSIS_CODE_2, 1, 3) == "J45" |
-                              substr(DIAGNOSIS_CODE_3, 1, 3) == "493" |
-                              substr(DIAGNOSIS_CODE_3, 1, 3) == "J45" |
-                              substr(DIAGNOSIS_CODE_4, 1, 3) == "493" |
-                              substr(DIAGNOSIS_CODE_4, 1, 3) == "J45" |
-                              substr(DIAGNOSIS_CODE_5, 1, 3) == "493" |
-                              substr(DIAGNOSIS_CODE_5, 1, 3) == "J45" |
-                              , 1, 0))
-
-
---#B. SELECT 2014 BASELINE CLAIMS DATA FOR PATIENTS WITH ASTHMA
-  
-  
-  --Generate predictors from #B, such as hospitalization, ED visit, urgent care visit, other visit type? comorbidity?
---#B1=number of baseline hospitalizations for asthma, any diagnosis
-  SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS H1 INTO #B1
-FROM #B
-WHERE CAL_YEAR=2014 AND CLM_TYPE_CID=31
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%'
-     OR DIAGNOSIS_CODE_2 LIKE '493%' OR DIAGNOSIS_CODE_2 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_3 LIKE '493%' OR DIAGNOSIS_CODE_3 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_4 LIKE '493%' OR DIAGNOSIS_CODE_4 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_5 LIKE '493%' OR DIAGNOSIS_CODE_5 LIKE 'J45%')
-GROUP BY ID2014;
-
---#B2=number of baseline hospitalizations for asthma, primary diagnosis
-  DROP TABLE #B2
-SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS H2 INTO #B2
-FROM #B
-WHERE CAL_YEAR=2014 AND CLM_TYPE_CID=31
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%')
-GROUP BY ID2014;
-
---#B3=number of ER visit for asthma, any diagnosis
-  SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS E1 INTO #B3	
-FROM #B
-WHERE CAL_YEAR=2014 AND REVENUE_CODE IN ('0450','0456','0459','0981')
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%'
-     OR DIAGNOSIS_CODE_2 LIKE '493%' OR DIAGNOSIS_CODE_2 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_3 LIKE '493%' OR DIAGNOSIS_CODE_3 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_4 LIKE '493%' OR DIAGNOSIS_CODE_4 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_5 LIKE '493%' OR DIAGNOSIS_CODE_5 LIKE 'J45%')
-GROUP BY ID2014;
-
-DROP TABLE #B4
---#B4=number of ER visit for asthma, primary diagnosis
-  SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS E2 INTO #B4	
-FROM #B
-WHERE CAL_YEAR=2014 AND REVENUE_CODE IN ('0450','0456','0459','0981')
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%')
-GROUP BY ID2014;
-
-
-DROP TABLE #B5
---#B5=well child check up visit for asthma, any diagnosis
-  SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS C1 INTO #B5	
-FROM #B
-WHERE CAL_YEAR=2014 AND CLM_TYPE_CID=27
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%'
-     OR DIAGNOSIS_CODE_2 LIKE '493%' OR DIAGNOSIS_CODE_2 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_3 LIKE '493%' OR DIAGNOSIS_CODE_3 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_4 LIKE '493%' OR DIAGNOSIS_CODE_4 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_5 LIKE '493%' OR DIAGNOSIS_CODE_5 LIKE 'J45%')
-GROUP BY ID2014;
-
---#B6=number of well child checkup visit for asthma, primary diagnosis
-  DROP TABLE #B6
-SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS C2 INTO #B6	
-FROM #B
-WHERE CAL_YEAR=2014 AND CLM_TYPE_CID=27
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%')
-GROUP BY ID2014;
-
---#B7=number of asthma-related claims, any diagnosis
-  SELECT DISTINCT ID2014, COUNT(DISTINCT TCN) AS A1 INTO #B7	
-FROM #B
-WHERE CAL_YEAR=2014
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%'
-     OR DIAGNOSIS_CODE_2 LIKE '493%' OR DIAGNOSIS_CODE_2 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_3 LIKE '493%' OR DIAGNOSIS_CODE_3 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_4 LIKE '493%' OR DIAGNOSIS_CODE_4 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_5 LIKE '493%' OR DIAGNOSIS_CODE_5 LIKE 'J45%')
-GROUP BY ID2014;
-
---#B8=number of asthma-related claims, primary diagnosis
-  DROP TABLE #B8
-SELECT DISTINCT ID2014, COUNT(DISTINCT TCN) AS A2 INTO #B8	
-FROM #B
-WHERE CAL_YEAR=2014
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%')
-GROUP BY ID2014;
-
----------------------------
-  --#C. SELECT 2015 (SUBSEQUENT YEAR) CLAIMS DATA FOR PATIENTS WITH ASTHMA
-  DROP TABLE #C
-SELECT * INTO #C
-FROM PHClaims.dbo.vClaims
-INNER JOIN #A5
-ON PHClaims.dbo.vClaims.MEDICAID_RECIPIENT_ID=#A5.ID2014
-  WHERE CAL_YEAR=2015
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%'
-     OR DIAGNOSIS_CODE_2 LIKE '493%' OR DIAGNOSIS_CODE_2 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_3 LIKE '493%' OR DIAGNOSIS_CODE_3 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_4 LIKE '493%' OR DIAGNOSIS_CODE_4 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_5 LIKE '493%' OR DIAGNOSIS_CODE_5 LIKE 'J45%');
-
---Generate outcome variables from #C, such as hospitalization, ED visit, 
---#C1=number of hospitalizations for asthma, any diagnosis, OUTCOME VARIABLE
-  DROP TABLE #C1
-SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS EX_H1 INTO #C1
-FROM #C
-WHERE CAL_YEAR=2015 AND CLM_TYPE_CID=31
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%'
-     OR DIAGNOSIS_CODE_2 LIKE '493%' OR DIAGNOSIS_CODE_2 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_3 LIKE '493%' OR DIAGNOSIS_CODE_3 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_4 LIKE '493%' OR DIAGNOSIS_CODE_4 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_5 LIKE '493%' OR DIAGNOSIS_CODE_5 LIKE 'J45%')
-GROUP BY ID2014;
-
---#C2=number of EXIT hospitalizations for asthma, primary diagnosis
-  DROP TABLE #C2
-SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS EX_H2 INTO #C2
-FROM #C
-WHERE CAL_YEAR=2015 AND CLM_TYPE_CID=31
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%')
-GROUP BY ID2014;
-
---#C3=number of EXIT ER visit for asthma, any diagnosis
-  DROP TABLE #C3
-SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS EX_E1 INTO #C3	
-FROM #C
-WHERE CAL_YEAR=2015 AND REVENUE_CODE IN ('0450','0456','0459','0981')
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%'
-     OR DIAGNOSIS_CODE_2 LIKE '493%' OR DIAGNOSIS_CODE_2 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_3 LIKE '493%' OR DIAGNOSIS_CODE_3 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_4 LIKE '493%' OR DIAGNOSIS_CODE_4 LIKE 'J45%'
-     OR DIAGNOSIS_CODE_5 LIKE '493%' OR DIAGNOSIS_CODE_5 LIKE 'J45%')
-GROUP BY ID2014;
-
-DROP TABLE #C4
---#C4=number of EXIT ER visit for asthma, primary diagnosis
-  SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS EX_E2 INTO #C4	
-FROM #C
-WHERE CAL_YEAR=2015 AND REVENUE_CODE IN ('0450','0456','0459','0981')
-AND (PRIMARY_DIAGNOSIS_CODE LIKE '493%' OR PRIMARY_DIAGNOSIS_CODE LIKE 'J45%')
-GROUP BY ID2014;
-
-SELECT * FROM #B1
-
-----xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-/*Join files */
-  SELECT #A5.ID2014,
-#T1.T1,
-#T2.T2,
-#B7.A1,
-#B8.A2,
-#B1.H1,
-#B2.H2,
-#B3.E1,
-#B4.E2,
-#B5.C1,
-#B6.C2,
-#C1.EX_H1,
-#C2.EX_H2,
-#C3.EX_E1,
-#C4.EX_E2
-INTO #D1
-FROM #A5
-INNER JOIN #B7
-ON #A5.ID2014=#B7.ID2014
-LEFT JOIN #B8
-ON #A5.ID2014=#B8.ID2014
-LEFT JOIN #B1
-ON #A5.ID2014=#B1.ID2014
-LEFT JOIN #B2
-ON #A5.ID2014=#B2.ID2014
-LEFT JOIN #B3
-ON #A5.ID2014=#B3.ID2014
-LEFT JOIN #B4
-ON #A5.ID2014=#B4.ID2014
-LEFT JOIN #B5
-ON #A5.ID2014=#B5.ID2014
-LEFT JOIN #B6
-ON #A5.ID2014=#B6.ID2014
-LEFT JOIN #C1
-ON #A5.ID2014=#C1.ID2014
-LEFT JOIN #C2
-ON #A5.ID2014=#C2.ID2014
-LEFT JOIN #C3
-ON #A5.ID2014=#C3.ID2014
-LEFT JOIN #C4
-ON #A5.ID2014=#C4.ID2014
-LEFT JOIN #T1
-ON #A5.ID2014=#T1.ID2014
-LEFT JOIN #T2
-ON #A5.ID2014=#T2.ID2014;
+  mutate(
+    hospcnt14 = sum(ifelse(CAL_YEAR == 2014 &
+                             CLM_TYPE_CID == 31, 1, 0)),
+    # hospitalizations for asthma, any diagnosis
+    hospcntprim14 = sum(ifelse(
+      CAL_YEAR == 2014 & CLM_TYPE_CID == 31 &
+        (
+          substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "493" |
+            substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "J45"
+        ),
+      1,
+      0
+    )),
+    # hospitalizations for asthma, primary diagnosis
+    EDcnt14 = sum(ifelse(
+      CAL_YEAR == 2014 & REVENUE_CODE %in% c(0450, 0456, 0459, 0981), 1, 0
+    )),
+    # ED visits for asthma, any diagnosis
+    EDcntprim14 = sum(ifelse(
+      CAL_YEAR == 2014 & REVENUE_CODE %in% c(0450, 0456, 0459, 0981) &
+        (
+          substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "493" |
+            substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "J45"
+        ),
+      1,
+      0
+    )),
+    # ED visits for asthma, primary diagnosis
+    wellcnt14 = sum(ifelse(CAL_YEAR == 2014 &
+                             CLM_TYPE_CID == 27, 1, 0)),
+    # well-child checks for asthma, any diagnosis
+    wellcntprim14 = sum(ifelse(
+      CAL_YEAR == 2014 & CLM_TYPE_CID == 27 &
+        (
+          substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "493" |
+            substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "J45"
+        ),
+      1,
+      0
+    )),
+    # well-child checks for asthma, primary diagnosis
+    asthmacnt14 = sum(ifelse(CAL_YEAR == 2014, 1, 0)),
+    asmthacntprim14 = sum(ifelse(
+      CAL_YEAR == 2014 &
+        (
+          substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "493" |
+            substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "J45"
+        ),
+      1,
+      0
+    )),
+    # Count up number of outcome (2015) measures for each child
+    hospcnt15 = sum(ifelse(CAL_YEAR == 2015 &
+                             CLM_TYPE_CID == 31, 1, 0)),
+    # hospitalizations for asthma, any diagnosis
+    hospcntprim15 = sum(ifelse(
+      CAL_YEAR == 2015 & CLM_TYPE_CID == 31 &
+        (
+          substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "493" |
+            substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "J45"
+        ),
+      1,
+      0
+    )),
+    # hospitalizations for asthma, primary diagnosis
+    EDcnt15 = sum(ifelse(
+      CAL_YEAR == 2015 & REVENUE_CODE %in% c(0450, 0456, 0459, 0981), 1, 0
+    )),
+    # ED visits for asthma, any diagnosis
+    EDcntprim15 = sum(ifelse(
+      CAL_YEAR == 2015 & REVENUE_CODE %in% c(0450, 0456, 0459, 0981) &
+        (
+          substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "493" |
+            substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "J45"
+        ),
+      1,
+      0
+    )),
+    # ED visits for asthma, primary diagnosis
+    wellcnt15 = sum(ifelse(CAL_YEAR == 2015 &
+                             CLM_TYPE_CID == 27, 1, 0))
+  )
 
 
 
-SELECT * FROM #D1
+# ANALYSIS ----------------------------------------------------------------
 
-SELECT * FROM #A4
-INNER JOIN #D1
-ON #A4.ID2014=#D1.ID2014;
+
