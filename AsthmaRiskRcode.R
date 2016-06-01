@@ -91,7 +91,7 @@ asthma <-
     OR DIAGNOSIS_CODE_3 LIKE '493%' OR DIAGNOSIS_CODE_3 LIKE 'J45%'
     OR DIAGNOSIS_CODE_4 LIKE '493%' OR DIAGNOSIS_CODE_4 LIKE 'J45%'
     OR DIAGNOSIS_CODE_5 LIKE '493%' OR DIAGNOSIS_CODE_5 LIKE 'J45%')"
-    )
+  )
 proc.time() - ptm02
 
 asthmachild <- merge(eligall, asthma, by = "ID2014")
@@ -99,9 +99,9 @@ asthmachild <- merge(eligall, asthma, by = "ID2014")
 
 
 --#B. SELECT 2014 BASELINE CLAIMS DATA FOR PATIENTS WITH ASTHMA
-
-
---Generate predictors from #B, such as hospitalization, ED visit, urgent care visit, other visit type? comorbidity?
+  
+  
+  --Generate predictors from #B, such as hospitalization, ED visit, urgent care visit, other visit type? comorbidity?
 --#B1=number of baseline hospitalizations for asthma, any diagnosis
   SELECT DISTINCT ID2014, COUNT(DISTINCT FROM_SRVC_DATE) AS H1 INTO #B1
 FROM #B
