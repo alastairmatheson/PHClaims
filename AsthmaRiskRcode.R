@@ -94,8 +94,30 @@ asthma <-
   )
 proc.time() - ptm02
 
+
+##### Merge all eligible children with asthma claims
 asthmachild <- merge(eligall, asthma, by = "ID2014")
 
+# Count up number of predictors for each child
+asthmarisk <- asthmachild %>%
+  group_by(ID2014) %>%
+  mutate(hospcount = summarise(ifelse(CAL_YEAR=2014 & CLM_TYPE_CID=31,1,0)))
+           
+           
+           
+           
+           
+           ifelse(substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "493" | 
+                              substr(PRIMARY_DIAGNOSIS_CODE, 1, 3) == "J45" |
+                              substr(DIAGNOSIS_CODE_2, 1, 3) == "493" |
+                              substr(DIAGNOSIS_CODE_2, 1, 3) == "J45" |
+                              substr(DIAGNOSIS_CODE_3, 1, 3) == "493" |
+                              substr(DIAGNOSIS_CODE_3, 1, 3) == "J45" |
+                              substr(DIAGNOSIS_CODE_4, 1, 3) == "493" |
+                              substr(DIAGNOSIS_CODE_4, 1, 3) == "J45" |
+                              substr(DIAGNOSIS_CODE_5, 1, 3) == "493" |
+                              substr(DIAGNOSIS_CODE_5, 1, 3) == "J45" |
+                              , 1, 0))
 
 
 --#B. SELECT 2014 BASELINE CLAIMS DATA FOR PATIENTS WITH ASTHMA
